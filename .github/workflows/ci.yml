@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install linting tools
+      run: |
+        pip install flake8 black
+
+    - name: Check formatting with black
+      run: |
+        black --check src/
+
+    - name: Lint with flake8
+      run: |
+        flake8 src/ --max-line-length=100 --ignore=E501
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.8', '3.9', '3.10', '3.11']
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ffmpeg
+
+    - name: Install Python dependencies
+      run: |
+        pip install -r VoiceSeperation_v0.0.1/requirements.txt
+        pip install pytest
+
+    - name: Syntax check
+      run: |
+        python -m py_compile VoiceSeperation_v0.0.1/src/voice_isolation.py
+
+    - name: Import check
+      run: |
+        python -c "import torch; import torchaudio; import scipy; print('All imports OK')"

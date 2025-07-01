@@ -1,0 +1,19 @@
+{
+  "name": "voice-separation",
+  "version": "1.0.0",
+  "description": "Voice Separation — Demucs Vocal Isolation Pipeline",
+  "main": "electron/main.js",
+  "author": {
+    "name": "J. Michaels",
+    "url": "https://github.com/sanchez314c"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/sanchez314c/voice-seperation",
+  "scripts": {
+    "start": "electron . --no-sandbox",
+    "dev": "electron . --no-sandbox --dev"
+  },
+  "devDependencies": {
+    "electron": "^27.3.11"
+  }
+}
