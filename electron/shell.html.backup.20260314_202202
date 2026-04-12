@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Voice Separation</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      background: transparent !important;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', Roboto, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      user-select: none;
+    }
+
+    /* ── Body padding creates the float gap ── */
+    body {
+      padding: 16px;
+      box-sizing: border-box;
+    }
+
+    /* ── Outer frame: floating panel with rounded corners ── */
+    .outer-frame {
+      position: relative;
+      height: 100%;
+      background: linear-gradient(160deg, #0a0b0e, #0f1012);
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow:
+        0 4px 8px rgba(0,0,0,0.15),
+        0 8px 16px rgba(0,0,0,0.15),
+        0 16px 32px rgba(0,0,0,0.2),
+        0 32px 64px rgba(0,0,0,0.25);
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Drag handle — invisible, sits above everything for drag region ── */
+    .drag-handle {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 48px;
+      -webkit-app-region: drag;
+      z-index: 50;
+      pointer-events: none;
+    }
+
+    /* Only interactive leaf elements opt out of drag */
+    button, input, select, a {
+      -webkit-app-region: no-drag;
+    }
+
+    /* ── Title Bar ── */
+    .title-bar {
+      height: 48px;
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      position: relative;
+      z-index: 100;
+      background: transparent;
+      flex-shrink: 0;
+    }
+
+    .title-bar::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 16px; right: 16px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.04), transparent);
+      pointer-events: none;
+    }
+
+    .app-icon {
+      height: 18px;
+      width: auto;
+      object-fit: contain;
+      margin-right: 10px;
+      -webkit-app-region: no-drag;
+      border-radius: 4px;
+    }
+
+    .app-name {
+      font-size: 15px;
+      font-weight: 600;
+      color: #14b8a6;
+      margin-right: 10px;
+      white-space: nowrap;
+    }
+
+    .app-tagline {
+      font-size: 12px;
+      color: #5c5c6a;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .title-spacer { flex: 1; }
+
+    /* Controls wrapper — all no-drag, high z-index */
+    .title-bar-controls {
+      display: flex;
+      align-items: center;
+      -webkit-app-region: no-drag;
+      z-index: 200;
+    }
+
+    /* ── Flat action icons group (About + Settings) ── */
+    .title-bar-actions {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      margin-right: 10px;
+    }
+
+    .title-bar-action {
+      background: none;
+      border: none;
+      color: #5c5c6a;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px;
+      border-radius: 4px;
+      transition: color 150ms ease;
+      -webkit-app-region: no-drag;
+    }
+
+    .title-bar-action:hover { color: #e8e8ec; }
+    .title-bar-action#about-btn:hover { color: #14b8a6; }
+
+    /* ── Circular window controls group ── */
+    .title-bar-window-controls {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .window-ctrl-btn {
+      width: 28px;
+      height: 28px;
+      background: rgba(255,255,255,0.06);
+      border: none;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: #5c5c6a;
+      font-size: 13px;
+      transition: all 150ms ease;
+      line-height: 1;
+    }
+
+    .window-ctrl-btn:hover {
+      background: rgba(255,255,255,0.12);
+      color: #e8e8ec;
+    }
+
+    .window-ctrl-btn.window-close-btn:hover {
+      background: #ef4444;
+      color: #ffffff;
+    }
+
+    /* ── Status Bar (footer) ── */
+    .status-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 28px;
+      padding: 0 16px;
+      background: #0a0b0e;
+      border-top: 1px solid #1e1e24;
+      font-size: 12px;
+      color: #5c5c6a;
+      flex-shrink: 0;
+      font-family: inherit;
+    }
+
+    .status-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .status-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .status-indicator {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 8px #10b981;
+      flex-shrink: 0;
+      transition: all 150ms ease;
+    }
+
+    .status-indicator.offline {
+      background: #52525b;
+      box-shadow: none;
+    }
+
+    .app-version {
+      color: #14b8a6;
+      font-weight: 500;
+    }
+
+    /* ── About Modal Overlay ── */
+    .about-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(10,11,14,0.94);
+      backdrop-filter: blur(10px);
+      z-index: 999;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      animation: fadeIn 200ms ease;
+    }
+
+    .about-overlay.active {
+      display: flex;
+    }
+
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    .about-modal {
+      background: linear-gradient(145deg, #141518, #18191c);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 14px;
+      padding: 32px 40px;
+      min-width: 360px;
+      max-width: 440px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      box-shadow:
+        0 4px 8px rgba(0,0,0,0.15),
+        0 8px 16px rgba(0,0,0,0.15),
+        0 16px 32px rgba(0,0,0,0.2),
+        0 32px 64px rgba(0,0,0,0.25);
+    }
+
+    .about-modal::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+      pointer-events: none;
+    }
+
+    .about-close-btn {
+      position: absolute;
+      top: 12px; right: 12px;
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.06);
+      border: none;
+      color: #5c5c6a;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      transition: all 150ms ease;
+      z-index: 1;
+    }
+
+    .about-close-btn:hover { background: #ef4444; color: #fff; }
+
+    .about-app-icon {
+      width: 64px; height: 64px;
+      border-radius: 12px;
+      margin: 0 auto 16px;
+      display: block;
+      object-fit: contain;
+    }
+
+    .about-app-name {
+      font-size: 22px;
+      font-weight: 700;
+      color: #f4f4f7;
+      margin: 0 0 4px;
+    }
+
+    .about-version {
+      font-size: 14px;
+      color: #14b8a6;
+      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+      margin-bottom: 12px;
+    }
+
+    .about-desc {
+      font-size: 14px;
+      color: #9a9aa6;
+      margin-bottom: 12px;
+    }
+
+    .about-license {
+      font-size: 13px;
+      color: #5c5c6a;
+      margin-bottom: 16px;
+    }
+
+    .about-github-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: linear-gradient(135deg, #14b8a6, #0d9488);
+      color: #0a0b0e;
+      padding: 10px 24px;
+      border-radius: 9999px;
+      font-weight: 600;
+      font-size: 14px;
+      text-decoration: none;
+      margin-bottom: 12px;
+      box-shadow: 0 0 16px rgba(20,184,166,0.25);
+      transition: all 150ms ease;
+      cursor: pointer;
+      border: none;
+      font-family: inherit;
+    }
+
+    .about-github-badge:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 24px rgba(20,184,166,0.35);
+    }
+
+    .about-email {
+      font-size: 12px;
+      color: #5c5c6a;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <!-- Invisible drag handle at z-index 50 -->
+  <div class="drag-handle"></div>
+
+  <div class="outer-frame">
+
+    <!-- ── Canonical Title Bar ── -->
+    <div class="title-bar">
+      <!-- Left: icon + name + tagline -->
+      <img src="../resources/icons/icon.webp" class="app-icon" alt="" draggable="false" onerror="this.style.display='none'">
+      <span class="app-name">Voice Separation</span>
+      <span class="app-tagline">Demucs Vocal Isolation Pipeline</span>
+
+      <div class="title-spacer"></div>
+
+      <!-- Right: flat action icons + circular window controls -->
+      <div class="title-bar-controls">
+        <div class="title-bar-actions">
+          <!-- About icon (flat, no background) -->
+          <button class="title-bar-action" id="about-btn" title="About">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Circular window controls: min / max / close -->
+        <div class="title-bar-window-controls">
+          <button class="window-ctrl-btn" id="btn-minimize" title="Minimize">&#x2500;</button>
+          <button class="window-ctrl-btn" id="btn-maximize" title="Maximize">&#x25A1;</button>
+          <button class="window-ctrl-btn window-close-btn" id="btn-close" title="Close">&#x2715;</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Flask content area fills the middle (BrowserView is injected here by Electron) -->
+    <div style="flex:1; overflow:hidden; position:relative;"></div>
+
+    <!-- ── Status Bar (footer) ── -->
+    <div class="status-bar">
+      <div class="status-left">
+        <div class="status-indicator" id="statusIndicator"></div>
+        <span id="statusText">Status: Ready</span>
+      </div>
+      <div class="status-right">
+        <span class="app-version">v1.0.0</span>
+      </div>
+    </div>
+
+  </div><!-- /.outer-frame -->
+
+  <!-- ── About Modal ── -->
+  <div class="about-overlay" id="aboutOverlay">
+    <div class="about-modal">
+      <button class="about-close-btn" id="aboutCloseBtn">&#x2715;</button>
+      <img src="../resources/icons/icon.webp" class="about-app-icon" alt="Voice Separation" onerror="this.style.display='none'">
+      <h2 class="about-app-name">Voice Separation</h2>
+      <div class="about-version">v1.0.0</div>
+      <div class="about-desc">Demucs Vocal Isolation Pipeline</div>
+      <div class="about-license">MIT License | Jason Paul Michaels</div>
+      <button class="about-github-badge" id="githubBadgeBtn">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+        </svg>
+        GitHub
+      </button>
+      <span class="about-email">software@jasonpaulmichaels.co</span>
+    </div>
+  </div>
+
+  <script>
+    // ── Window Controls ──
+    document.getElementById('btn-minimize').addEventListener('click', () => {
+      window.electronAPI.windowMinimize();
+    });
+    document.getElementById('btn-maximize').addEventListener('click', () => {
+      window.electronAPI.windowMaximize();
+    });
+    document.getElementById('btn-close').addEventListener('click', () => {
+      window.electronAPI.windowClose();
+    });
+
+    // ── About Modal ──
+    function openAboutModal() {
+      document.getElementById('aboutOverlay').classList.add('active');
+    }
+
+    function closeAboutModal() {
+      document.getElementById('aboutOverlay').classList.remove('active');
+    }
+
+    document.getElementById('about-btn').addEventListener('click', openAboutModal);
+    document.getElementById('aboutCloseBtn').addEventListener('click', closeAboutModal);
+
+    // Close on overlay click (outside modal)
+    document.getElementById('aboutOverlay').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) closeAboutModal();
+    });
+
+    // Close on Escape
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeAboutModal();
+    });
+
+    // GitHub badge — open external
+    document.getElementById('githubBadgeBtn').addEventListener('click', () => {
+      const url = 'https://github.com/sanchez314c/voice-seperation';
+      if (window.electronAPI && window.electronAPI.openExternal) {
+        window.electronAPI.openExternal(url);
+      }
+    });
+
+    // Expose globally for any inline calls
+    window.openAboutModal = openAboutModal;
+    window.closeAboutModal = closeAboutModal;
+  </script>
+</body>
+</html>

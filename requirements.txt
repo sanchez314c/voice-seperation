@@ -1,0 +1,18 @@
+# Voice Isolation Pipeline Dependencies
+
+# Core audio processing
+torch>=2.0.0
+torchaudio>=2.0.0
+numpy>=1.21.0
+scipy>=1.7.0
+
+# Voice separation
+demucs>=4.0.0
+
+# Web UI (Dark Neo Glass theme)
+flask>=3.0.0
+
+# Optional: for development
+# pytest>=7.0.0
+# black>=22.0.0
+# flake8>=5.0.0

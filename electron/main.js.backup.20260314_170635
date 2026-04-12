@@ -1,0 +1,202 @@
+/**
+ * Voice Separation — Electron Main Process
+ * Spawns the Flask backend and displays it in a frameless neo-glass window.
+ */
+const { app, BrowserWindow, BrowserView, ipcMain } = require('electron');
+const path = require('path');
+const { spawn } = require('child_process');
+const net = require('net');
+
+let mainWindow = null;
+let flaskProcess = null;
+let flaskPort = null;
+
+// ── Find a free port ──
+function findFreePort() {
+  return new Promise((resolve, reject) => {
+    const server = net.createServer();
+    server.listen(0, () => {
+      const port = server.address().port;
+      server.close(() => resolve(port));
+    });
+    server.on('error', reject);
+  });
+}
+
+// ── Wait for Flask to be ready ──
+function waitForFlask(port, maxRetries = 30) {
+  return new Promise((resolve, reject) => {
+    let retries = 0;
+    const check = () => {
+      const client = new net.Socket();
+      client.connect(port, '127.0.0.1', () => {
+        client.destroy();
+        resolve();
+      });
+      client.on('error', () => {
+        client.destroy();
+        retries++;
+        if (retries >= maxRetries) {
+          reject(new Error(`Flask not ready after ${maxRetries} retries`));
+        } else {
+          setTimeout(check, 500);
+        }
+      });
+    };
+    check();
+  });
+}
+
+// ── Start Flask backend ──
+async function startFlask() {
+  flaskPort = await findFreePort();
+
+  const projectDir = path.join(__dirname, '..');
+  const venvPython = path.join(projectDir, 'venv', 'bin', 'python');
+
+  // Prefer venv python, fall back to system
+  const pythonCmd = require('fs').existsSync(venvPython) ? venvPython : 'python3';
+
+  const env = {
+    ...process.env,
+    FLASK_PORT: String(flaskPort),
+    OMP_NUM_THREADS: String(require('os').cpus().length),
+    MKL_NUM_THREADS: String(require('os').cpus().length),
+  };
+
+  flaskProcess = spawn(pythonCmd, [path.join(projectDir, 'src', 'app.py')], {
+    cwd: projectDir,
+    env,
+    stdio: ['pipe', 'pipe', 'pipe'],
+  });
+
+  flaskProcess.stdout.on('data', (data) => {
+    process.stdout.write(`[Flask] ${data}`);
+  });
+
+  flaskProcess.stderr.on('data', (data) => {
+    process.stderr.write(`[Flask] ${data}`);
+  });
+
+  flaskProcess.on('exit', (code) => {
+    console.log(`Flask exited with code ${code}`);
+    flaskProcess = null;
+  });
+
+  console.log(`Waiting for Flask on port ${flaskPort}...`);
+  await waitForFlask(flaskPort);
+  console.log(`Flask ready on port ${flaskPort}`);
+}
+
+// ── Create the main window ──
+function createWindow() {
+  mainWindow = new BrowserWindow({
+    width: 1400,
+    height: 900,
+    minWidth: 800,
+    minHeight: 600,
+    frame: false,
+    transparent: true,
+    backgroundColor: '#00000000',
+    hasShadow: false,
+    title: 'Voice Separation',
+    webPreferences: {
+      contextIsolation: true,
+      sandbox: false,
+      preload: path.join(__dirname, 'preload.js'),
+    },
+  });
+
+  // Load the shell HTML (contains titlebar + BrowserView host)
+  mainWindow.loadFile(path.join(__dirname, 'shell.html'));
+
+  // Create a BrowserView for Flask content (below the titlebar)
+  const contentView = new BrowserView({
+    webPreferences: {
+      contextIsolation: true,
+      sandbox: false,
+    },
+  });
+
+  mainWindow.addBrowserView(contentView);
+  contentView.webContents.loadURL(`http://127.0.0.1:${flaskPort}`);
+
+  // Position the BrowserView below the titlebar (40px)
+  const TITLEBAR_HEIGHT = 40;
+  const BODY_PAD = 16;
+
+  function updateViewBounds() {
+    if (mainWindow.isDestroyed()) return;
+    const [width, height] = mainWindow.getContentSize();
+    contentView.setBounds({
+      x: BODY_PAD + 1,
+      y: TITLEBAR_HEIGHT + BODY_PAD,
+      width: width - (BODY_PAD * 2) - 2,
+      height: height - TITLEBAR_HEIGHT - (BODY_PAD * 2) - 1,
+    });
+  }
+
+  mainWindow.on('resize', updateViewBounds);
+  mainWindow.on('maximize', () => setTimeout(updateViewBounds, 100));
+  mainWindow.on('unmaximize', () => setTimeout(updateViewBounds, 100));
+  mainWindow.once('ready-to-show', updateViewBounds);
+
+  // Initial bounds after a brief delay
+  setTimeout(updateViewBounds, 200);
+
+  // DevTools only with explicit flag
+  if (process.argv.includes('--dev')) {
+    mainWindow.webContents.openDevTools();
+  }
+
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+  });
+}
+
+// ── IPC Handlers ──
+ipcMain.on('window-minimize', () => mainWindow && mainWindow.minimize());
+ipcMain.on('window-maximize', () => {
+  if (!mainWindow) return;
+  mainWindow.isMaximized() ? mainWindow.unmaximize() : mainWindow.maximize();
+});
+ipcMain.on('window-close', () => mainWindow && mainWindow.close());
+
+// ── App lifecycle ──
+
+// Linux transparent window fixes
+if (process.platform === 'linux') {
+  app.commandLine.appendSwitch('enable-transparent-visuals');
+  app.commandLine.appendSwitch('disable-gpu-compositing');
+  app.commandLine.appendSwitch('no-sandbox');
+}
+
+app.whenReady().then(async () => {
+  try {
+    await startFlask();
+
+    if (process.platform === 'linux') {
+      setTimeout(createWindow, 300);
+    } else {
+      createWindow();
+    }
+  } catch (err) {
+    console.error('Failed to start Flask:', err);
+    app.quit();
+  }
+});
+
+app.on('window-all-closed', () => {
+  if (flaskProcess) {
+    flaskProcess.kill('SIGTERM');
+    flaskProcess = null;
+  }
+  app.quit();
+});
+
+app.on('before-quit', () => {
+  if (flaskProcess) {
+    flaskProcess.kill('SIGTERM');
+    flaskProcess = null;
+  }
+});
