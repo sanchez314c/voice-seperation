@@ -1,272 +1,485 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voice Separation</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/theme.css">
-</head>
-<body>
-
-<!-- Notification Toast -->
-<div class="notification" id="notification">
-    <span class="notification-icon" id="notification-icon"></span>
-    <span id="notification-text"></span>
-</div>
-
-<div class="app-container">
-
-    <!-- ── MAIN CONTENT ── -->
-    <main class="main-content">
-
-        <!-- Hero Card — ambient gradient mesh -->
-        <div class="hero-card">
-            <h1 class="hero-title">Isolate Voices from Audio</h1>
-            <p class="hero-description">
-                Upload an audio file and extract specific voices using Meta's Demucs neural network
-                for vocal separation combined with pitch-based gender classification.
-            </p>
-            <div class="hero-stats">
-                <div class="hero-stat">
-                    <span class="hero-stat-value">htdemucs</span>
-                    <span class="hero-stat-label">Model</span>
-                </div>
-                <div class="hero-stat">
-                    <span class="hero-stat-value">80–400 Hz</span>
-                    <span class="hero-stat-label">F0 Range</span>
-                </div>
-                <div class="hero-stat">
-                    <span class="hero-stat-value">0.5s</span>
-                    <span class="hero-stat-label">Segment Window</span>
-                </div>
-                <div class="hero-stat">
-                    <span class="hero-stat-value">WAV / MP3</span>
-                    <span class="hero-stat-label">Output Formats</span>
-                </div>
-            </div>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Voice Separation</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+            rel="stylesheet"
+        />
+        <link rel="stylesheet" href="/static/css/theme.css" />
+    </head>
+    <body>
+        <!-- Notification Toast -->
+        <div class="notification" id="notification">
+            <span class="notification-icon" id="notification-icon"></span>
+            <span id="notification-text"></span>
         </div>
 
-        <!-- Status Row -->
-        <div class="status-row">
-            <span class="status-dot" id="status-dot"></span>
-            <span id="status-text">Initializing...</span>
-        </div>
-
-        <!-- Content Grid: Upload + Settings -->
-        <div class="content-grid">
-
-            <!-- Upload Card -->
-            <div class="card">
-                <div class="card-title">
-                    <span class="card-title-icon">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
-                        </svg>
-                    </span>
-                    Audio Input
+        <div class="app-container">
+            <!-- ── MAIN CONTENT ── -->
+            <main class="main-content">
+                <!-- Hero Card — ambient gradient mesh -->
+                <div class="hero-card">
+                    <h1 class="hero-title">Isolate Voices from Audio</h1>
+                    <p class="hero-description">
+                        Upload an audio file and extract specific voices using
+                        Meta's Demucs neural network for vocal separation
+                        combined with pitch-based gender classification.
+                    </p>
+                    <div class="hero-stats">
+                        <div class="hero-stat">
+                            <span class="hero-stat-value">htdemucs</span>
+                            <span class="hero-stat-label">Model</span>
+                        </div>
+                        <div class="hero-stat">
+                            <span class="hero-stat-value">80–400 Hz</span>
+                            <span class="hero-stat-label">F0 Range</span>
+                        </div>
+                        <div class="hero-stat">
+                            <span class="hero-stat-value">0.5s</span>
+                            <span class="hero-stat-label">Segment Window</span>
+                        </div>
+                        <div class="hero-stat">
+                            <span class="hero-stat-value">WAV / MP3</span>
+                            <span class="hero-stat-label">Output Formats</span>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="upload-zone" id="upload-zone">
-                    <input type="file" id="file-input" accept="audio/*" style="display:none">
+                <!-- Status Row -->
+                <div class="status-row">
+                    <span class="status-dot" id="status-dot"></span>
+                    <span id="status-text">Initializing...</span>
+                </div>
 
-                    <div id="upload-content">
-                        <div class="upload-icon">
-                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                                <line x1="12" y1="19" x2="12" y2="23"/>
-                                <line x1="8" y1="23" x2="16" y2="23"/>
+                <!-- Content Grid: Upload + Settings -->
+                <div class="content-grid">
+                    <!-- Upload Card -->
+                    <div class="card">
+                        <div class="card-title">
+                            <span class="card-title-icon">
+                                <svg
+                                    width="14"
+                                    height="14"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                >
+                                    <path
+                                        d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"
+                                    />
+                                    <polyline points="17 8 12 3 7 8" />
+                                    <line x1="12" y1="3" x2="12" y2="15" />
+                                </svg>
+                            </span>
+                            Audio Input
+                        </div>
+
+                        <div class="upload-zone" id="upload-zone">
+                            <input
+                                type="file"
+                                id="file-input"
+                                accept="audio/*"
+                                style="display: none"
+                            />
+
+                            <div id="upload-content">
+                                <div class="upload-icon">
+                                    <svg
+                                        width="28"
+                                        height="28"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="1.5"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                    >
+                                        <path
+                                            d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"
+                                        />
+                                        <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                                        <line x1="12" y1="19" x2="12" y2="23" />
+                                        <line x1="8" y1="23" x2="16" y2="23" />
+                                    </svg>
+                                </div>
+                                <p class="upload-text">
+                                    Drop your audio file here or click to browse
+                                </p>
+                                <p class="upload-hint">
+                                    Supports MP3, WAV, FLAC, OGG &mdash; Max
+                                    500MB
+                                </p>
+                            </div>
+
+                            <div
+                                class="file-info"
+                                id="file-info"
+                                style="display: none"
+                            >
+                                <span class="file-name" id="file-name"></span>
+                                <span class="file-size" id="file-size"></span>
+                                <button
+                                    class="file-remove"
+                                    id="file-remove"
+                                    title="Remove file"
+                                >
+                                    &times;
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="action-bar mt-lg">
+                            <button
+                                class="btn-primary"
+                                id="process-btn"
+                                disabled
+                            >
+                                <svg
+                                    width="16"
+                                    height="16"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                >
+                                    <polygon
+                                        points="5 3 19 12 5 21 5 3"
+                                    ></polygon>
+                                </svg>
+                                Process Audio
+                            </button>
+                            <button
+                                class="btn-danger"
+                                id="cancel-btn"
+                                style="display: none"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                class="btn-secondary"
+                                id="reset-btn"
+                                style="display: none"
+                            >
+                                New File
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Settings Card -->
+                    <div class="card">
+                        <div class="card-title">
+                            <span class="card-title-icon">
+                                <svg
+                                    width="14"
+                                    height="14"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                >
+                                    <circle cx="12" cy="12" r="3" />
+                                    <path
+                                        d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"
+                                    />
+                                </svg>
+                            </span>
+                            Pipeline Settings
+                        </div>
+
+                        <div class="settings-group">
+                            <div class="setting-item">
+                                <div class="range-header">
+                                    <label
+                                        class="setting-label"
+                                        for="segment-duration"
+                                        >Segment Duration</label
+                                    >
+                                    <span class="range-value" id="segment-value"
+                                        >0.5s</span
+                                    >
+                                </div>
+                                <input
+                                    type="range"
+                                    id="segment-duration"
+                                    min="0.1"
+                                    max="2.0"
+                                    step="0.1"
+                                    value="0.5"
+                                />
+                                <span class="setting-hint"
+                                    >Analysis window size (smaller = more
+                                    precise, slower)</span
+                                >
+                            </div>
+
+                            <div class="setting-item">
+                                <div class="range-header">
+                                    <label
+                                        class="setting-label"
+                                        for="silence-threshold"
+                                        >Silence Threshold (RMS)</label
+                                    >
+                                    <span class="range-value" id="silence-value"
+                                        >0.01</span
+                                    >
+                                </div>
+                                <input
+                                    type="range"
+                                    id="silence-threshold"
+                                    min="0.001"
+                                    max="0.05"
+                                    step="0.001"
+                                    value="0.01"
+                                />
+                                <span class="setting-hint"
+                                    >Below this level, segments are treated as
+                                    silence</span
+                                >
+                            </div>
+
+                            <div class="setting-item">
+                                <label class="setting-label" for="output-format"
+                                    >Output Format</label
+                                >
+                                <select id="output-format">
+                                    <option value="both">WAV + MP3</option>
+                                    <option value="mp3">MP3 Only</option>
+                                    <option value="wav">WAV Only</option>
+                                </select>
+                                <span class="setting-hint"
+                                    >MP3 requires FFmpeg installed</span
+                                >
+                            </div>
+
+                            <div class="glass-panel mt-md">
+                                <div class="section-label mb-sm">
+                                    Gender Thresholds (Hz)
+                                </div>
+                                <div class="gender-thresholds">
+                                    <div class="threshold-item">
+                                        <div
+                                            class="threshold-value"
+                                            style="color: var(--accent-blue)"
+                                        >
+                                            &lt; 165
+                                        </div>
+                                        <div class="threshold-label">Male</div>
+                                    </div>
+                                    <div class="threshold-item">
+                                        <div
+                                            class="threshold-value"
+                                            style="color: var(--accent-purple)"
+                                        >
+                                            165–180
+                                        </div>
+                                        <div class="threshold-label">
+                                            Ambiguous
+                                        </div>
+                                    </div>
+                                    <div class="threshold-item">
+                                        <div
+                                            class="threshold-value"
+                                            style="color: var(--accent-teal)"
+                                        >
+                                            &gt; 180
+                                        </div>
+                                        <div class="threshold-label">
+                                            Female
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Progress Section -->
+                <div class="progress-section" id="progress-section">
+                    <div class="card">
+                        <div class="card-title">
+                            <span class="card-title-icon">
+                                <div
+                                    class="spinner"
+                                    style="
+                                        width: 14px;
+                                        height: 14px;
+                                        border-width: 2px;
+                                    "
+                                ></div>
+                            </span>
+                            Processing Pipeline
+                        </div>
+
+                        <div class="progress-info">
+                            <span class="progress-label" id="progress-label"
+                                >Waiting...</span
+                            >
+                            <span class="progress-percent" id="progress-percent"
+                                >0%</span
+                            >
+                        </div>
+                        <div class="progress-track">
+                            <div class="progress-fill" id="progress-fill"></div>
+                        </div>
+
+                        <div class="process-steps">
+                            <div class="process-step" id="step-1">
+                                <div class="step-indicator">1</div>
+                                <div class="step-text">
+                                    Vocal Extraction (Demucs htdemucs)
+                                </div>
+                            </div>
+                            <div class="process-step" id="step-2">
+                                <div class="step-indicator">2</div>
+                                <div class="step-text">
+                                    Pitch Analysis &amp; Gender Classification
+                                </div>
+                            </div>
+                            <div class="process-step" id="step-3">
+                                <div class="step-indicator">3</div>
+                                <div class="step-text">
+                                    Post-Processing &amp; Export
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Results Section -->
+                <div class="results-section" id="results-section">
+                    <div class="results-card">
+                        <div class="card-title">
+                            <span class="card-title-icon result-success-icon">
+                                <svg
+                                    width="14"
+                                    height="14"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2.5"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                >
+                                    <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                            </span>
+                            Processing Results
+                        </div>
+
+                        <div class="result-stats">
+                            <div class="result-stat">
+                                <span
+                                    class="result-stat-value"
+                                    id="female-segments"
+                                    >--</span
+                                >
+                                <span class="result-stat-label"
+                                    >Female Segments</span
+                                >
+                            </div>
+                            <div class="result-stat">
+                                <span
+                                    class="result-stat-value"
+                                    id="male-segments"
+                                    style="color: var(--accent-blue)"
+                                    >--</span
+                                >
+                                <span class="result-stat-label"
+                                    >Male Segments</span
+                                >
+                            </div>
+                            <div class="result-stat">
+                                <span
+                                    class="result-stat-value"
+                                    id="ambiguous-segments"
+                                    style="color: var(--accent-purple)"
+                                    >--</span
+                                >
+                                <span class="result-stat-label">Ambiguous</span>
+                            </div>
+                            <div class="result-stat">
+                                <span
+                                    class="result-stat-value"
+                                    id="silence-segments"
+                                    style="color: var(--text-muted)"
+                                    >--</span
+                                >
+                                <span class="result-stat-label">Silence</span>
+                            </div>
+                            <div class="result-stat">
+                                <span
+                                    class="result-stat-value"
+                                    id="total-duration"
+                                    >--</span
+                                >
+                                <span class="result-stat-label">Duration</span>
+                            </div>
+                            <div class="result-stat">
+                                <span
+                                    class="result-stat-value"
+                                    id="processing-time"
+                                    >--</span
+                                >
+                                <span class="result-stat-label"
+                                    >Process Time</span
+                                >
+                            </div>
+                        </div>
+
+                        <!-- Audio Player -->
+                        <div
+                            class="audio-player-wrapper"
+                            id="audio-player-wrapper"
+                            style="display: none"
+                        >
+                            <div class="audio-player-label">
+                                Preview Isolated Voice
+                            </div>
+                            <audio id="audio-player" controls></audio>
+                        </div>
+
+                        <!-- Output Files -->
+                        <div class="output-files" id="output-files"></div>
+                    </div>
+                </div>
+
+                <!-- Log Console -->
+                <div class="card">
+                    <div class="card-title">
+                        <span class="card-title-icon">
+                            <svg
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            >
+                                <polyline points="4 17 10 11 4 5" />
+                                <line x1="12" y1="19" x2="20" y2="19" />
                             </svg>
-                        </div>
-                        <p class="upload-text">Drop your audio file here or click to browse</p>
-                        <p class="upload-hint">Supports MP3, WAV, FLAC, OGG &mdash; Max 500MB</p>
+                        </span>
+                        Console Output
                     </div>
-
-                    <div class="file-info" id="file-info" style="display:none">
-                        <span class="file-name" id="file-name"></span>
-                        <span class="file-size" id="file-size"></span>
-                        <button class="file-remove" id="file-remove" title="Remove file">&times;</button>
-                    </div>
+                    <div class="log-console" id="log-console"></div>
                 </div>
-
-                <div class="action-bar mt-lg">
-                    <button class="btn-primary" id="process-btn" disabled>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polygon points="5 3 19 12 5 21 5 3"></polygon>
-                        </svg>
-                        Process Audio
-                    </button>
-                    <button class="btn-danger" id="cancel-btn" style="display:none">Cancel</button>
-                    <button class="btn-secondary" id="reset-btn" style="display:none">New File</button>
-                </div>
-            </div>
-
-            <!-- Settings Card -->
-            <div class="card">
-                <div class="card-title">
-                    <span class="card-title-icon">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-                        </svg>
-                    </span>
-                    Pipeline Settings
-                </div>
-
-                <div class="settings-group">
-                    <div class="setting-item">
-                        <div class="range-header">
-                            <label class="setting-label" for="segment-duration">Segment Duration</label>
-                            <span class="range-value" id="segment-value">0.5s</span>
-                        </div>
-                        <input type="range" id="segment-duration" min="0.1" max="2.0" step="0.1" value="0.5">
-                        <span class="setting-hint">Analysis window size (smaller = more precise, slower)</span>
-                    </div>
-
-                    <div class="setting-item">
-                        <div class="range-header">
-                            <label class="setting-label" for="silence-threshold">Silence Threshold (RMS)</label>
-                            <span class="range-value" id="silence-value">0.01</span>
-                        </div>
-                        <input type="range" id="silence-threshold" min="0.001" max="0.05" step="0.001" value="0.01">
-                        <span class="setting-hint">Below this level, segments are treated as silence</span>
-                    </div>
-
-                    <div class="setting-item">
-                        <label class="setting-label" for="output-format">Output Format</label>
-                        <select id="output-format">
-                            <option value="both">WAV + MP3</option>
-                            <option value="mp3">MP3 Only</option>
-                            <option value="wav">WAV Only</option>
-                        </select>
-                        <span class="setting-hint">MP3 requires FFmpeg installed</span>
-                    </div>
-
-                    <div class="glass-panel mt-md">
-                        <div class="section-label mb-sm">Gender Thresholds (Hz)</div>
-                        <div class="gender-thresholds">
-                            <div class="threshold-item">
-                                <div class="threshold-value" style="color: var(--accent-blue);">&lt; 165</div>
-                                <div class="threshold-label">Male</div>
-                            </div>
-                            <div class="threshold-item">
-                                <div class="threshold-value" style="color: var(--accent-purple);">165–180</div>
-                                <div class="threshold-label">Ambiguous</div>
-                            </div>
-                            <div class="threshold-item">
-                                <div class="threshold-value" style="color: var(--accent-teal);">&gt; 180</div>
-                                <div class="threshold-label">Female</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            </main>
         </div>
 
-        <!-- Progress Section -->
-        <div class="progress-section" id="progress-section">
-            <div class="card">
-                <div class="card-title">
-                    <span class="card-title-icon">
-                        <div class="spinner" style="width:14px;height:14px;border-width:2px;"></div>
-                    </span>
-                    Processing Pipeline
-                </div>
-
-                <div class="progress-info">
-                    <span class="progress-label" id="progress-label">Waiting...</span>
-                    <span class="progress-percent" id="progress-percent">0%</span>
-                </div>
-                <div class="progress-track">
-                    <div class="progress-fill" id="progress-fill"></div>
-                </div>
-
-                <div class="process-steps">
-                    <div class="process-step" id="step-1">
-                        <div class="step-indicator">1</div>
-                        <div class="step-text">Vocal Extraction (Demucs htdemucs)</div>
-                    </div>
-                    <div class="process-step" id="step-2">
-                        <div class="step-indicator">2</div>
-                        <div class="step-text">Pitch Analysis &amp; Gender Classification</div>
-                    </div>
-                    <div class="process-step" id="step-3">
-                        <div class="step-indicator">3</div>
-                        <div class="step-text">Post-Processing &amp; Export</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Results Section -->
-        <div class="results-section" id="results-section">
-            <div class="results-card">
-                <div class="card-title">
-                    <span class="card-title-icon result-success-icon">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="20 6 9 17 4 12"/>
-                        </svg>
-                    </span>
-                    Processing Results
-                </div>
-
-                <div class="result-stats">
-                    <div class="result-stat">
-                        <span class="result-stat-value" id="female-segments">--</span>
-                        <span class="result-stat-label">Female Segments</span>
-                    </div>
-                    <div class="result-stat">
-                        <span class="result-stat-value" id="male-segments" style="color: var(--accent-blue);">--</span>
-                        <span class="result-stat-label">Male Segments</span>
-                    </div>
-                    <div class="result-stat">
-                        <span class="result-stat-value" id="ambiguous-segments" style="color: var(--accent-purple);">--</span>
-                        <span class="result-stat-label">Ambiguous</span>
-                    </div>
-                    <div class="result-stat">
-                        <span class="result-stat-value" id="silence-segments" style="color: var(--text-muted);">--</span>
-                        <span class="result-stat-label">Silence</span>
-                    </div>
-                    <div class="result-stat">
-                        <span class="result-stat-value" id="total-duration">--</span>
-                        <span class="result-stat-label">Duration</span>
-                    </div>
-                    <div class="result-stat">
-                        <span class="result-stat-value" id="processing-time">--</span>
-                        <span class="result-stat-label">Process Time</span>
-                    </div>
-                </div>
-
-                <!-- Audio Player -->
-                <div class="audio-player-wrapper" id="audio-player-wrapper" style="display:none">
-                    <div class="audio-player-label">Preview Isolated Voice</div>
-                    <audio id="audio-player" controls></audio>
-                </div>
-
-                <!-- Output Files -->
-                <div class="output-files" id="output-files"></div>
-            </div>
-        </div>
-
-        <!-- Log Console -->
-        <div class="card">
-            <div class="card-title">
-                <span class="card-title-icon">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>
-                    </svg>
-                </span>
-                Console Output
-            </div>
-            <div class="log-console" id="log-console"></div>
-        </div>
-
-    </main>
-
-</div>
-
-<script src="/static/js/main.js"></script>
-</body>
+        <script src="/static/js/main.js"></script>
+    </body>
 </html>

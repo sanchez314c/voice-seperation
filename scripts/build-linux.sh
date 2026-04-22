@@ -13,7 +13,7 @@ APP_NAME="voice-separation"
 cd "$PROJECT_DIR"
 
 echo "=== PURGING EXISTING BUILD ARTIFACTS ==="
-rm -rf dist/ build/ *.spec
+rm -rf dist/ build/ ./*.spec
 
 echo "=== INSTALLING DEPENDENCIES ==="
 pip install -r requirements.txt

@@ -82,7 +82,7 @@ Known issues, planned features, and technical debt.
 
 ### Bugs
 * [ ] Progress bar sometimes jumps from 30% to 100% (Demucs doesn't report progress)
-* [ ] Cancel button doesn't immediately stop Demucs subprocess
+* [x] Cancel button now terminates Demucs subprocess (per-task cancel_flag polled in run_demucs + segment loop)
 * [ ] Audio player doesn't work on Safari (browser compatibility)
 * [ ] Window resize causes visual glitch on macOS (BrowserView bounds)
 

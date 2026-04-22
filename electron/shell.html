@@ -15,24 +15,42 @@
       user-select: none;
     }
 
-    /* ── Body padding creates the float gap ── */
+    /* ── Body padding creates the float gap for the drop shadow to breathe ── */
     body {
-      padding: 16px;
+      padding: 20px;
       box-sizing: border-box;
+      position: relative;
     }
 
-    /* ── Outer frame: floating panel with rounded corners ── */
+    /* ── Rounded window shadow (Rule 5 — body::before pattern) ────────────── */
+    /* box-shadow on .outer-frame directly = rectangular diffusion, kills round  */
+    /* corners. Correct pattern: pseudo-element whose border-radius is LARGER   */
+    /* than the panel's so the shadow traces the rounded shape cleanly as it    */
+    /* diffuses outward. 36px outer vs 20px panel = corners stay round at blur  */
+    /* extremes. `inset: 20px` matches body padding. pointer-events: none so    */
+    /* the shadow layer never captures clicks.                                  */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 20px;
+      border-radius: 36px;
+      box-shadow:
+        0 4px 8px rgba(0, 0, 0, 0.4),
+        0 8px 20px rgba(0, 0, 0, 0.45),
+        0 14px 36px rgba(0, 0, 0, 0.35);
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    /* ── Outer frame: floating panel with rounded corners (no shadow here) ── */
+    /* Shadow lives on body::before so corners stay perfectly round.           */
     .outer-frame {
       position: relative;
       height: 100%;
       background: linear-gradient(160deg, #0a0b0e, #0f1012);
       border-radius: 20px;
       overflow: hidden;
-      box-shadow:
-        0 4px 8px rgba(0,0,0,0.15),
-        0 8px 16px rgba(0,0,0,0.15),
-        0 16px 32px rgba(0,0,0,0.2),
-        0 32px 64px rgba(0,0,0,0.25);
+      box-shadow: none;
       display: flex;
       flex-direction: column;
     }

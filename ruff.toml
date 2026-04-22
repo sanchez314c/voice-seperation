@@ -1,0 +1,14 @@
+line-length = 100
+target-version = "py311"
+
+[lint]
+extend-select = ["E", "F", "W", "I"]
+# E501 (line-too-long) is handled by formatter; noisy for log-string f-strings.
+ignore = ["E501"]
+
+[lint.per-file-ignores]
+# Both files intentionally call warnings.filterwarnings("ignore") before
+# importing torch/torchaudio/etc to suppress noisy deprecation warnings.
+# E402 (import not at top of file) is the expected trade-off.
+"src/app.py" = ["E402"]
+"src/voice_isolation.py" = ["E402"]

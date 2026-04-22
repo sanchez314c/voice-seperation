@@ -36,6 +36,7 @@ New here? Start with [QUICK_START.md](QUICK_START.md) to get the app running in 
 | [Workflow](WORKFLOW.md) | Development workflow, branching strategy, CI/CD |
 | [Quick Start](QUICK_START.md) | Fastest path from clone to running (minimal steps) |
 | [Learnings](LEARNINGS.md) | Development insights, gotchas, things that didn't work |
+| [Testing](TESTING.md) | Test plan, layout, coverage goals, fixture inventory |
 | [PRD](../PRD.md) | Product requirements document (what this project is, goals, scope) |
 | [TODO](TODO.md) | Known issues, planned features, technical debt |
 

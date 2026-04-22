@@ -215,7 +215,7 @@ def analyze_and_isolate_female(
     fade_samples = int(0.01 * sr)  # 10ms fade
     for i in range(1, num_segments):
         pos = i * segment_samples
-        if pos + fade_samples < len(female_audio):
+        if pos + fade_samples <= len(female_audio):
             fade_in = np.linspace(0, 1, fade_samples)
             fade_out = np.linspace(1, 0, fade_samples)
             # Apply fades at segment boundaries
@@ -258,9 +258,7 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(description="Female Voice Isolation Pipeline")
-    parser.add_argument(
-        "input_file", help="Path to input audio file (MP3, WAV, FLAC, etc.)"
-    )
+    parser.add_argument("input_file", help="Path to input audio file (MP3, WAV, FLAC, etc.)")
     parser.add_argument(
         "--output-dir",
         default=str(Path.home() / "voice_separation_output"),

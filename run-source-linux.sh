@@ -4,7 +4,6 @@ set -e
 # Color codes
 RED='\033[0;31m'
 GREEN='\033[0;32m'
-BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
@@ -26,8 +25,8 @@ print_success "Sandbox permissions configured"
 
 # ── Clean up zombie processes ──
 print_status "Cleaning up zombie processes..."
-pkill -f "electron.*voice-sep" 2>/dev/null || true
-pkill -f "python.*src/app.py" 2>/dev/null || true
+pkill -f "electron.*voice-separation" 2>/dev/null || true
+pkill -f "python.*voice.separation.*src/app.py" 2>/dev/null || true
 sleep 1
 print_success "Cleanup complete"
 

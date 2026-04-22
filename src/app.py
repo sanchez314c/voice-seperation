@@ -23,7 +23,15 @@ warnings.filterwarnings("ignore")
 # Audio processing
 import torch
 import torchaudio
-from flask import Flask, Response, jsonify, render_template, request, send_file, stream_with_context
+from flask import (
+    Flask,
+    Response,
+    jsonify,
+    render_template,
+    request,
+    send_file,
+    stream_with_context,
+)
 from scipy.io import wavfile
 
 # ── App Configuration ──
@@ -66,6 +74,7 @@ def add_security_headers(response):
 tasks = {}
 task_queues = {}
 cancel_flags = {}
+_tasks_lock = threading.Lock()  # protects concurrent mutation of tasks/task_queues/cancel_flags
 
 
 # ── Voice Isolation Core Functions ──
@@ -116,9 +125,7 @@ def classify_gender_by_pitch(f0: float) -> str:
         return "ambiguous"
 
 
-def run_demucs(
-    input_file: str, output_dir: str, queue: Queue, cancel_flag: dict
-) -> str:
+def run_demucs(input_file: str, output_dir: str, queue: Queue, cancel_flag: dict) -> str:
     """Run Demucs to separate vocals from the audio."""
     queue.put(
         {
@@ -143,9 +150,7 @@ def run_demucs(
 
     queue.put({"log": f"Command: {' '.join(cmd)}", "log_type": "info"})
 
-    process = subprocess.Popen(
-        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
-    )
+    process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
     # Poll for output while checking cancel flag
     while process.poll() is None:
@@ -307,7 +312,7 @@ def analyze_and_isolate_female(
     fade_samples = int(0.01 * sr)
     for i in range(1, num_segments):
         pos = i * segment_samples
-        if pos + fade_samples < len(female_audio):
+        if pos + fade_samples <= len(female_audio):
             fade_in = np.linspace(0, 1, fade_samples)
             fade_out = np.linspace(1, 0, fade_samples)
             if np.any(female_audio[pos - fade_samples : pos] != 0) and np.any(
@@ -324,30 +329,32 @@ def analyze_and_isolate_female(
 
     output_files = []
 
-    # Save WAV
+    # Save WAV (use Path.with_suffix for robust extension swap)
+    output_path_obj = Path(output_path)
+    wav_path_obj = output_path_obj.with_suffix(".wav")
+
     if output_format in ("wav", "both"):
-        wav_path = output_path.replace(".mp3", ".wav")
+        wav_path = str(wav_path_obj)
         wavfile.write(wav_path, sr, (female_audio * 32767).astype(np.int16))
         wav_size = os.path.getsize(wav_path)
         output_files.append(
             {
-                "name": Path(wav_path).name,
+                "name": wav_path_obj.name,
                 "path": wav_path,
                 "format": "wav",
                 "size": wav_size,
             }
         )
-        queue.put({"log": f"Saved: {Path(wav_path).name}", "log_type": "success"})
+        queue.put({"log": f"Saved: {wav_path_obj.name}", "log_type": "success"})
 
     # Save MP3
     if output_format in ("mp3", "both"):
-        wav_temp = output_path.replace(".mp3", "_temp.wav")
+        wav_temp_obj = output_path_obj.with_name(output_path_obj.stem + "_temp.wav")
+        wav_temp = str(wav_temp_obj)
         if output_format == "mp3":
             wavfile.write(wav_temp, sr, (female_audio * 32767).astype(np.int16))
 
-        source_wav = (
-            wav_temp if output_format == "mp3" else output_path.replace(".mp3", ".wav")
-        )
+        source_wav = wav_temp if output_format == "mp3" else str(wav_path_obj)
         mp3_path = output_path
         cmd = [
             "ffmpeg",
@@ -396,9 +403,7 @@ def analyze_and_isolate_female(
     }
 
 
-def process_task(
-    task_id, file_path, segment_duration, silence_threshold, output_format
-):
+def process_task(task_id, file_path, segment_duration, silence_threshold, output_format):
     """Main processing task that runs in a background thread."""
     queue = task_queues[task_id]
     cancel_flag = cancel_flags[task_id]
@@ -425,6 +430,7 @@ def process_task(
         elapsed = time.time() - start_time
         results["processing_time"] = elapsed
 
+        tasks[task_id]["status"] = "complete"
         queue.put(
             {
                 "status": "complete",
@@ -440,6 +446,7 @@ def process_task(
         )
 
     except RuntimeError as e:
+        tasks[task_id]["status"] = "error"
         queue.put(
             {
                 "status": "error",
@@ -449,6 +456,7 @@ def process_task(
             }
         )
     except Exception as e:
+        tasks[task_id]["status"] = "error"
         queue.put(
             {
                 "status": "error",
@@ -512,15 +520,16 @@ def process_audio():
     if output_format not in ALLOWED_OUTPUT_FORMATS:
         output_format = "both"
 
-    # Create task
+    # Create task (hold lock to prevent a concurrent cleanup from racing the init)
     task_id = uuid.uuid4().hex
-    task_queues[task_id] = Queue()
-    cancel_flags[task_id] = {"cancelled": False}
-    tasks[task_id] = {
-        "status": "processing",
-        "file": file_path,
-        "started": time.time(),
-    }
+    with _tasks_lock:
+        task_queues[task_id] = Queue()
+        cancel_flags[task_id] = {"cancelled": False}
+        tasks[task_id] = {
+            "status": "processing",
+            "file": file_path,
+            "started": time.time(),
+        }
 
     # Start processing in background thread
     thread = threading.Thread(
@@ -537,15 +546,22 @@ def process_audio():
 
 
 def _cleanup_old_tasks(max_tasks: int = 20):
-    """Remove oldest completed tasks to prevent unbounded memory growth."""
-    if len(tasks) <= max_tasks:
-        return
-    # Sort by start time and remove oldest
-    sorted_ids = sorted(tasks.keys(), key=lambda tid: tasks[tid].get("started", 0))
-    for tid in sorted_ids[: len(tasks) - max_tasks]:
-        tasks.pop(tid, None)
-        task_queues.pop(tid, None)
-        cancel_flags.pop(tid, None)
+    """Remove oldest completed/errored tasks to prevent unbounded memory growth."""
+    with _tasks_lock:
+        if len(tasks) <= max_tasks:
+            return
+        sorted_ids = sorted(tasks.keys(), key=lambda tid: tasks[tid].get("started", 0))
+        removed = 0
+        target = len(tasks) - max_tasks
+        for tid in sorted_ids:
+            if removed >= target:
+                break
+            if tasks[tid].get("status") == "processing":
+                continue
+            tasks.pop(tid, None)
+            task_queues.pop(tid, None)
+            cancel_flags.pop(tid, None)
+            removed += 1
 
 
 @app.route("/api/progress/<task_id>")
@@ -557,6 +573,7 @@ def progress(task_id):
     queue = task_queues[task_id]
 
     def generate():
+        heartbeat_count = 0
         while True:
             try:
                 data = queue.get(timeout=30)
@@ -565,6 +582,10 @@ def progress(task_id):
                 if data.get("status") in ("complete", "error"):
                     break
             except Exception:
+                heartbeat_count += 1
+                if heartbeat_count > 60:
+                    yield f"data: {json.dumps({'status': 'error', 'error': 'Task timed out'})}\n\n"
+                    break
                 yield f"data: {json.dumps({'log': 'Heartbeat', 'log_type': 'info'})}\n\n"
 
     return Response(
@@ -602,6 +623,9 @@ def download(file_path):
         output_dir_resolved = OUTPUT_DIR.resolve()
         # Ensure the resolved path is inside OUTPUT_DIR
         resolved.relative_to(output_dir_resolved)  # raises ValueError if outside
+        # Only serve audio output files
+        if resolved.suffix.lower() not in {".mp3", ".wav", ".flac", ".ogg"}:
+            return jsonify({"error": "Invalid file type"}), 400
         if resolved.is_file():
             return send_file(str(resolved), as_attachment=True)
     except (ValueError, OSError):
@@ -614,7 +638,14 @@ def download(file_path):
 if __name__ == "__main__":
     import random
 
-    port = int(os.environ.get("FLASK_PORT", random.randint(8100, 8999)))
+    env_port = os.environ.get("FLASK_PORT")
+    if env_port:
+        port = int(env_port)
+        if not (1 <= port <= 65535):
+            print(f"FLASK_PORT={port} out of range, using random port")
+            port = random.randint(8100, 8999)
+    else:
+        port = random.randint(8100, 8999)
     print(f"\n{'=' * 60}")
     print("  Voice Separation — Dark Neo Glass UI")
     print(f"  Running on: http://localhost:{port}")
